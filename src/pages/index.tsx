@@ -41,10 +41,7 @@ const PostView = (props: PostWithUser) => {
   const { post, author } = props;
 
   return (
-    <div
-      key={post.id}
-      className="flex items-center gap-3 border-b border-slate-400 p-4"
-    >
+    <div key={post.id} className="flex gap-3 border-b border-slate-400 p-4">
       <Image
         className="h-14 w-14 rounded-full"
         src={author.profileImageUrl}
@@ -59,7 +56,7 @@ const PostView = (props: PostWithUser) => {
             post.createdAt
           ).fromNow()}`}</span>
         </div>
-        <span>{post.content}</span>
+        <span className="text-2xl">{post.content}</span>
       </div>
     </div>
   );
