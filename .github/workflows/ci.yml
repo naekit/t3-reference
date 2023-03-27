@@ -15,17 +15,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Install Dependencies
-        uses: actions/npm@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          command: install
+          node-version: 16.x
+
+      - name: Install Dependencies
+        run: npm install
 
       - name: Typecheck
-        uses: actions/npm@v1
-        with:
-          command: run typecheck
+        run: npm run typecheck
 
       - name: Lint
-        uses: actions/npm@v1
-        with:
-          command: run lint
+        run: npm run lint
