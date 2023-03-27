@@ -8,6 +8,26 @@ import { appRouter } from "../server/api/root";
 import superjson from "superjson";
 import { PageLayout } from "~/components/layout";
 import Image from "next/image";
+import { LoadingPage } from "../components/loading";
+import PostView from "../components/postview";
+
+const ProfileFeed = (props: { userId: string }) => {
+  const { data, isLoading } = api.posts.getPostById.useQuery({
+    userId: props.userId,
+  });
+
+  if (isLoading) return <LoadingPage />;
+
+  if (!data || data.length === 0) return <div>User has not posted!</div>;
+
+  return (
+    <>
+      {data.map((post) => (
+        <PostView key={post.post.id} post={post.post} author={post.author} />
+      ))}
+    </>
+  );
+};
 
 const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
   const { data } = api.profile.getUserByUserName.useQuery({
@@ -40,6 +60,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
             <h1 className="text-2xl font-bold">{`@${data.name ?? ""}`}</h1>
           </div>
           <div className="w-full border-b border-slate-400"></div>
+          <ProfileFeed userId={data.id} />
         </div>
       </PageLayout>
     </>

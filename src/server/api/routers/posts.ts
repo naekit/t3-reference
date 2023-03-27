@@ -8,6 +8,36 @@ import { privateProcedure } from "../trpc";
 import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
 import { Redis } from "@upstash/redis";
 import { filterUserForClient } from "~/server/helpers/filterUserForClient";
+import { type Post } from "@prisma/client";
+
+// abstraction to add user data to posts
+const addUserToPost = async (posts: Post[]) => {
+  const users = (
+    await clerkClient.users.getUserList({
+      userId: posts.map((post) => post.authorId),
+      limit: 100,
+    })
+  ).map(filterUserForClient);
+
+  return posts.map((post) => {
+    const author = users.find((user) => user.id === post.authorId);
+
+    if (!author || !author.name) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Author not found",
+      });
+    }
+
+    return {
+      post,
+      author: {
+        ...author,
+        name: author.name,
+      },
+    };
+  });
+};
 
 // Create a new ratelimiter, that allows 3 requests per 1 minute
 const ratelimit = new Ratelimit({
@@ -23,32 +53,32 @@ export const postsRouter = createTRPCRouter({
       orderBy: { createdAt: "desc" },
     });
 
-    const users = (
-      await clerkClient.users.getUserList({
-        userId: posts.map((post) => post.authorId),
-        limit: 100,
-      })
-    ).map(filterUserForClient);
+    return addUserToPost(posts);
+  }),
+  getPostById: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const posts: Post[] = await ctx.prisma.post.findMany({
+        where: { authorId: input.userId },
+        take: 100,
+        orderBy: { createdAt: "desc" },
+      });
+      const postsWithUser = await addUserToPost(posts);
 
-    return posts.map((post) => {
-      const author = users.find((user) => user.id === post.authorId);
-
-      if (!author || !author.name) {
+      if (
+        !postsWithUser ||
+        postsWithUser.length === 0 ||
+        !postsWithUser[0] ||
+        !posts
+      ) {
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Author not found",
+          code: "NOT_FOUND",
+          message: "Post not found",
         });
       }
 
-      return {
-        post,
-        author: {
-          ...author,
-          name: author.name,
-        },
-      };
-    });
-  }),
+      return postsWithUser;
+    }),
   create: privateProcedure
     .input(
       z.object({
